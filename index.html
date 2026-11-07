@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Regalía</title>
+<meta name="description" content="Our family's Secret Santa">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Regalía">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gloock&family=Figtree:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="lights" id="lights" aria-hidden="true"></div>
+<div class="wrap">
+  <header>
+    <div class="toprow">
+      <h1 class="brand">Regal<span>í</span>a</h1>
+      <div class="topbtns">
+        <button type="button" id="musicBtn" class="langbtn iconbtn" aria-label="Play Christmas music">🎵</button>
+        <button type="button" id="soundBtn" class="langbtn iconbtn" aria-label="Turn sound off">🔊</button>
+        <button type="button" id="langBtn" class="langbtn">🌐 Traducir</button>
+      </div>
+    </div>
+    <p class="tag" id="tagline">Our family's Secret Santa.</p>
+    <div class="countdown" id="countdown" hidden></div>
+    <div class="event" id="eventChips"></div>
+  </header>
+  <main id="app" aria-live="polite">
+    <p class="note">Loading…</p>
+  </main>
+</div>
+<script src="config.js"></script>
+<script src="i18n.js"></script>
+<script src="fx.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
