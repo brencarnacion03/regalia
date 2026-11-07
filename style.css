@@ -11,6 +11,7 @@
   color-scheme:light;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:19px;line-height:1.55;overscroll-behavior-y:none;-webkit-font-smoothing:antialiased}
 button,.btn,a,input,canvas,label{touch-action:manipulation}

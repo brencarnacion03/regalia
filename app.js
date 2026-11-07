@@ -587,8 +587,8 @@
       confirmBox.replaceChildren(
         h("p", { text: (drawn ? L("This replaces everyone's current match. ", "Esto reemplaza lo que le tocó a cada quien. ") : "") +
           L("Draw names for all " + people.length + " people now?", "¿Sortear los nombres de las " + people.length + " personas ahora?") +
-          (notReady ? L(" (" + notReady + " haven't filled in their card yet. That's okay, they can still do it after.)",
-                        " (" + notReady + " todavía no llenan su tarjeta. No pasa nada, pueden hacerlo después.)") : "") }),
+          (notReady ? L(" (" + notReady + (notReady === 1 ? " person hasn't" : " people haven't") + " filled in their card yet. That's okay, they can still do it after.)",
+                        " (" + notReady + (notReady === 1 ? " persona todavía no llena su tarjeta" : " personas todavía no llenan su tarjeta") + ". No pasa nada, pueden hacerlo después.)") : "") }),
         h("div", { class: "row" },
           h("button", { type: "button", text: "Yes, draw names", onclick: async () => {
             confirmBox.hidden = true; drawBtn.disabled = true; drawMsg.className = "status"; drawMsg.textContent = tr("Drawing…");
