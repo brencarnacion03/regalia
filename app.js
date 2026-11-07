@@ -653,7 +653,7 @@
     const el = document.getElementById("lights");
     if (!el) return;
     el.replaceChildren();
-    const colors = ["#fff1c9", "#e8384f", "#ffd56a", "#fff1c9", "#c8283f", "#f7c95c"];
+    const colors = ["#e8384f", "#2fa36b", "#c8283f", "#1f8a55"];
     const n = Math.ceil(innerWidth / 44) + 1;
     for (let i = 0; i < n; i++) {
       const b = document.createElement("span");
