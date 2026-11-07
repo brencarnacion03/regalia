@@ -25,6 +25,17 @@ button,.btn,.wheelwrap,.steps,.tick,.chip{-webkit-user-select:none;user-select:n
 .bulb::after{content:"";position:absolute;left:0;top:3px;width:9px;height:11px;border-radius:50% 50% 50% 50% / 40% 40% 60% 60%;background:var(--c);box-shadow:0 0 10px 3px var(--c);animation:twinkle var(--d) ease-in-out var(--delay) infinite alternate}
 @keyframes twinkle{0%{opacity:1;box-shadow:0 0 12px 4px var(--c)}60%{opacity:.9}100%{opacity:.4;box-shadow:0 0 2px 0 var(--c)}}
 
+/* Christmas trees along the bottom */
+body{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+body > .wrap{width:100%}
+.forest{position:relative;z-index:1;display:block;flex:none;height:170px;margin-top:auto;overflow:hidden;pointer-events:none;padding-bottom:env(safe-area-inset-bottom,0px);background:#fff}
+.forest svg{display:block}
+.forest .orn{animation:orn 2.4s ease-in-out infinite alternate}
+@keyframes orn{0%{opacity:1}100%{opacity:.35}}
+.forest .star{transform-box:fill-box;transform-origin:center;filter:drop-shadow(0 0 6px rgba(227,179,65,.9));animation:star 2.8s ease-in-out infinite}
+@keyframes star{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.15) rotate(8deg)}}
+@media (prefers-reduced-motion:reduce){.forest .orn,.forest .star{animation:none}}
+
 /* layout */
 .wrap{position:relative;z-index:1;max-width:680px;margin:0 auto;
   padding-top:max(18px,calc(env(safe-area-inset-top,0px) + 10px));padding-bottom:max(56px,calc(env(safe-area-inset-bottom,0px) + 32px));

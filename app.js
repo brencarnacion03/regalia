@@ -665,9 +665,70 @@
       el.append(b);
     }
   }
+  // a little forest of Christmas trees along the bottom of the page
+  function buildForest() {
+    const el = document.getElementById("forest");
+    if (!el) return;
+    const W = Math.max(320, Math.round(innerWidth)), H = 170;
+    const greens = [["#0b2c21", "#123f30"], ["#123f30", "#1f5e46"], ["#1f5e46", "#2c7a59"]];
+    let seed = 7;
+    const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+    const spacing = W < 500 ? 58 : 72;
+    const n = Math.ceil(W / spacing) + 1;
+    const trees = [];
+    for (let i = 0; i < n; i++) {
+      const x = i * spacing + (rnd() - 0.5) * 20;
+      const tall = rnd();
+      trees.push({ x, h: 62 + tall * 70, shade: (rnd() * 3) | 0, back: rnd() < 0.45 });
+    }
+    // the tallest tree in the middle gets a star
+    const mid = trees.reduce((best, t) => Math.abs(t.x - W / 2) < Math.abs(best.x - W / 2) ? t : best, trees[0]);
+    mid.h = 140; mid.back = false; mid.shade = 1; mid.star = true;
+    const ground = H - 18;
+    let back = "", front = "", lights = "";
+    const one = (t) => {
+      const [dark, light] = greens[t.shade];
+      const w = t.h * 0.62, top = ground - t.h, x = t.x;
+      let g = '<rect x="' + (x - 4) + '" y="' + (ground - 12) + '" width="8" height="14" rx="2" fill="#5b3a29"/>';
+      const tiers = 3;
+      for (let k = 0; k < tiers; k++) {
+        const ty = top + (t.h - 12) * (k / tiers) * 0.85;
+        const by = top + (t.h - 12) * ((k + 1) / tiers) + 2;
+        const half = (w / 2) * (0.55 + 0.45 * ((k + 1) / tiers));
+        g += '<path d="M' + x + ' ' + ty + ' L' + (x + half) + ' ' + by + ' Q' + x + ' ' + (by + 6) + ' ' + (x - half) + ' ' + by + ' Z" fill="' + dark + '"/>';
+        g += '<path d="M' + x + ' ' + ty + ' L' + (x + half) + ' ' + by + ' Q' + (x + half * 0.4) + ' ' + (by + 3) + ' ' + x + ' ' + (by + 4) + ' Z" fill="' + light + '" opacity=".75"/>';
+      }
+      if (!t.back) {
+        const count = Math.round(t.h / 22);
+        for (let k = 0; k < count; k++) {
+          const fy = 0.25 + 0.7 * rnd();
+          const yy = top + (t.h - 14) * fy;
+          const span = (w / 2) * (0.25 + 0.6 * fy);
+          const xx = x + (rnd() * 2 - 1) * span;
+          const c = rnd() < 0.5 ? "#e8384f" : "#e3b341";
+          lights += '<circle class="orn" cx="' + xx.toFixed(1) + '" cy="' + yy.toFixed(1) + '" r="2.6" fill="' + c + '" style="animation-delay:' + (-rnd() * 2.4).toFixed(2) + 's"/>';
+        }
+      }
+      if (t.star) {
+        const s = 11, cx = x, cy = top - 2;
+        let pts = "";
+        for (let k = 0; k < 10; k++) { const r = k % 2 ? s * 0.45 : s; const a = (k * Math.PI) / 5 - Math.PI / 2; pts += (cx + Math.cos(a) * r).toFixed(1) + "," + (cy + Math.sin(a) * r).toFixed(1) + " "; }
+        lights += '<polygon class="star" points="' + pts + '" fill="#e3b341"/>';
+      }
+      return g;
+    };
+    trees.forEach(t => { if (t.back) back += one(t); });
+    trees.forEach(t => { if (!t.back) front += one(t); });
+    const snowGround = '<path d="M0 ' + (ground - 4) + ' Q' + W * 0.25 + ' ' + (ground - 14) + ' ' + W * 0.5 + ' ' + (ground - 5) + ' T' + W + ' ' + (ground - 6) + ' L' + W + ' ' + H + ' L0 ' + H + ' Z" fill="#f2f5f3"/>' +
+      '<path d="M0 ' + (ground + 4) + ' Q' + W * 0.3 + ' ' + (ground - 4) + ' ' + W * 0.6 + ' ' + (ground + 3) + ' T' + W + ' ' + (ground + 2) + ' L' + W + ' ' + H + ' L0 ' + H + ' Z" fill="#ffffff"/>';
+    el.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="' + H + '" preserveAspectRatio="xMidYMax slice">' +
+      '<g opacity=".55">' + back + '</g>' + front + lights + snowGround + '</svg>';
+  }
+
   let lightsTimer = null;
-  window.addEventListener("resize", () => { clearTimeout(lightsTimer); lightsTimer = setTimeout(buildLights, 200); });
+  window.addEventListener("resize", () => { clearTimeout(lightsTimer); lightsTimer = setTimeout(() => { buildLights(); buildForest(); }, 200); });
   buildLights();
+  buildForest();
   paintMusic();
 
   if ("serviceWorker" in navigator && location.protocol === "https:") {
