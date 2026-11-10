@@ -98,6 +98,8 @@
     renderCountdown(ev);
     const box = document.getElementById("eventChips");
     box.replaceChildren();
+    // The family's name (set by the organizer in the database), so people in more than one family can tell them apart.
+    if (ev && ev.name) box.append(h("span", { class: "chip family" }, "🎄 " + ev.name));
     if (ev && ev.budget) box.append(h("span", { class: "chip", text: L("Budget: ", "Presupuesto: ") + ev.budget }));
     if (ev && ev.exchange_date) box.append(h("span", { class: "chip", text: L("Gift day: ", "Día del regalo: ") + fmtDate(ev.exchange_date) }));
     if (count != null) box.append(h("span", { class: "chip berry", text: count + (count === 1 ? L(" person", " persona") : L(" people", " personas")) }));
@@ -517,7 +519,7 @@
   function renderAdmin() {
     const { event, people } = adminData;
     renderEvent(event, people.length);
-    if (adminFamily) document.getElementById("eventChips").prepend(h("span", { class: "chip", text: L("Family: ", "Familia: ") + adminFamily }));
+    if (adminFamily && !event.name) document.getElementById("eventChips").prepend(h("span", { class: "chip", text: L("Family: ", "Familia: ") + adminFamily }));
     const drawn = !!event.drawn_at;
 
     // add people
