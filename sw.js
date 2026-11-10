@@ -1,7 +1,7 @@
 // Regalía service worker: lets the app install on phones and open fast.
 // Pages and scripts are fetched fresh when online (so updates show right away)
 // and fall back to the saved copy when the connection is bad.
-const CACHE = "regalia-v1";
+const CACHE = "regalia-v2";
 const SHELL = ["./", "index.html", "style.css", "app.js", "fx.js", "i18n.js", "config.js", "manifest.webmanifest", "icons/icon-192.png"];
 
 self.addEventListener("install", e => {
