@@ -41,6 +41,8 @@ insert into public.regalia_event (id) values (1) on conflict do nothing;
 -- ---------- families (safe to run on an existing database: nothing is lost) ----------
 -- Everyone already in the database stays in the original family ('').
 alter table public.regalia_people add column if not exists family text not null default '';
+-- Up to 3 links to things the person would like (store pages, etc.).
+alter table public.regalia_people add column if not exists links text[] not null default '{}';
 create index if not exists regalia_people_family_idx on public.regalia_people (family);
 alter table public.regalia_event add column if not exists family text not null default '';
 -- A name shown on everyone's page, e.g. 'Lorenzo''s Family'. Set it with:
@@ -123,10 +125,10 @@ begin
   end if;
   return json_build_object(
     'me', json_build_object('id', me.id, 'name', me.name, 'shirt', me.shirt, 'pants', me.pants,
-                            'shoes', me.shoes, 'wishes', me.wishes, 'joined', me.joined),
+                            'shoes', me.shoes, 'wishes', me.wishes, 'links', me.links, 'joined', me.joined),
     'match', case when m.id is null then null else
       json_build_object('id', m.id, 'name', m.name, 'shirt', m.shirt, 'pants', m.pants,
-                        'shoes', m.shoes, 'wishes', m.wishes) end,
+                        'shoes', m.shoes, 'wishes', m.wishes, 'links', m.links) end,
     'event', regalia_event_json(me.family),
     'everyone', coalesce((select json_agg(json_build_object('id', id, 'name', name, 'joined', joined) order by name)
                           from regalia_people where family = me.family), '[]'::json)
@@ -149,6 +151,20 @@ begin
               from unnest(coalesce(p_wishes, '{}')) with ordinality as t(w, i)
               where i <= 3 and trim(w) <> ''),
     joined = true,
+    updated_at = now()
+  where token = p_token;
+  if not found then raise exception 'not_found'; end if;
+  return true;
+end $$;
+
+-- Saves up to 3 web links (http or https only) on the person's wish card.
+create or replace function public.regalia_save_links(p_token text, p_links text[]) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  update regalia_people set
+    links = (select coalesce(array_agg(left(trim(u), 500) order by i), '{}')
+             from unnest(coalesce(p_links, '{}')) with ordinality as t(u, i)
+             where i <= 3 and trim(u) ~* '^https?://[^[:space:]]+$'),
     updated_at = now()
   where token = p_token;
   if not found then raise exception 'not_found'; end if;
@@ -240,6 +256,7 @@ end $$;
 grant execute on function
   public.regalia_me(text),
   public.regalia_save(text, text, text, text, text, text[]),
+  public.regalia_save_links(text, text[]),
   public.regalia_admin_status(text),
   public.regalia_admin_setup(text, text),
   public.regalia_admin_state(text, text),

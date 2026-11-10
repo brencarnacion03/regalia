@@ -48,6 +48,15 @@
     const d = new Date(s + "T12:00:00");
     return isNaN(d) ? s : d.toLocaleDateString(lang === "es" ? "es" : undefined, { weekday: "long", month: "long", day: "numeric" });
   }
+  // Accepts a pasted link, or text from a "Share" button that contains one. Returns "" if there's no usable link.
+  function cleanLink(raw) {
+    const t = (raw || "").trim();
+    if (!t) return "";
+    const m = t.match(/https?:\/\/[^\s<>"']+/i);
+    let u = m ? m[0] : (/^[\w-]+(\.[\w-]+)+(\/\S*)?$/.test(t) ? "https://" + t : "");
+    try { const x = new URL(u); return /^https?:$/.test(x.protocol) ? x.href.slice(0, 500) : ""; } catch (e) { return ""; }
+  }
+  function linkLabel(u) { try { return new URL(u).hostname.replace(/^www\./, ""); } catch (e) { return u; } }
   function firstName(n) { return (n || "").trim().split(/\s+/)[0] || "there"; }
 
   async function rpc(fn, args) {
@@ -214,6 +223,12 @@
     box.append(h("span", { class: "label", text: "Gifts they would love" }));
     box.append(w.length ? h("ol", { class: "wishes" }, w.map(x => h("li", { text: x })))
                         : h("p", { style: "margin:0", text: "They haven't added gift ideas yet. Check back later." }));
+    const links = (match.links || []).filter(u => /^https?:\/\//i.test(u));
+    if (links.length) {
+      box.append(h("span", { class: "label", text: "Links they shared" }));
+      box.append(h("ul", { class: "links" }, links.map(u =>
+        h("li", null, h("a", { href: u, target: "_blank", rel: "noopener noreferrer" }, "🔗 " + linkLabel(u))))));
+    }
     box.append(h("button", { type: "button", class: "light small", text: "Hide", onclick: () => { revealed = false; renderPerson(); } }));
   }
 
@@ -408,6 +423,7 @@
 
   function wishForm(me) {
     const w = me.wishes || [];
+    const l = me.links || [];
     const f = (id, label, val, ph) => h("div", { class: "field" },
       h("label", { for: id, text: label }), h("input", { id, maxlength: "20", value: val || "", placeholder: ph, autocomplete: "off" }));
     const status = h("p", { class: "status", role: "status" });
@@ -426,6 +442,13 @@
           h("div", { class: "wishrow" }, h("span", { class: "n", text: String(i + 1) }),
             h("input", { id: "fW" + (i + 1), maxlength: "80", value: w[i] || "", "aria-label": L("Gift idea ", "Idea de regalo ") + (i + 1),
               placeholder: ["A cozy robe", "Coffee", "A good book"][i], autocomplete: "off" }))))),
+      h("div", { class: "field" },
+        h("span", { class: "flabel" }, "Links to things I'd like ", h("span", { class: "hint", style: "display:inline;font-weight:400", text: "(optional, up to 3)" })),
+        h("span", { class: "hint", text: "Copy the link from Amazon, Target or any store and paste it here." }),
+        h("div", { class: "wishlist" }, [0, 1, 2].map(i =>
+          h("div", { class: "wishrow" }, h("span", { class: "n", text: "🔗" }),
+            h("input", { id: "fL" + (i + 1), type: "url", inputmode: "url", maxlength: "500", value: l[i] || "",
+              "aria-label": L("Link ", "Enlace ") + (i + 1), placeholder: "https://…", autocomplete: "off", autocapitalize: "off", spellcheck: "false" }))))),
       saveBtn, status
     );
     form.addEventListener("submit", async (ev) => {
@@ -436,11 +459,17 @@
       try {
         await rpc("regalia_save", { p_token: personToken, p_name: v("fName"), p_shirt: v("fShirt"), p_pants: v("fPants"),
           p_shoes: v("fShoes"), p_wishes: [v("fW1"), v("fW2"), v("fW3")] });
+        const links = ["fL1", "fL2", "fL3"].map(id => cleanLink(v(id))).filter(Boolean);
+        let linksSaved = true;
+        if (links.length || (me.links || []).length) {
+          try { await rpc("regalia_save_links", { p_token: personToken, p_links: links }); } catch (e) { linksSaved = false; }
+        }
         const fresh = await rpc("regalia_me", { p_token: personToken });
         if (fresh) personData = fresh;
         renderPerson();
         const st = app.querySelector("form .status");
-        if (st) { st.className = "status ok pop"; st.textContent = tr("✓ Saved! You're all set. You can change it anytime."); }
+        if (st && !linksSaved) { st.className = "status err"; st.textContent = tr("Your card saved, but the links didn't. Try Save again in a little while."); }
+        else if (st) { st.className = "status ok pop"; st.textContent = tr("✓ Saved! You're all set. You can change it anytime."); }
         giftWrap(app.querySelector("form"));
       } catch (e) {
         saveBtn.disabled = false;
