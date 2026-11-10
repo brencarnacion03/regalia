@@ -517,6 +517,7 @@
   function renderAdmin() {
     const { event, people } = adminData;
     renderEvent(event, people.length);
+    if (adminFamily) document.getElementById("eventChips").prepend(h("span", { class: "chip", text: L("Family: ", "Familia: ") + adminFamily }));
     const drawn = !!event.drawn_at;
 
     // add people
