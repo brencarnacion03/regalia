@@ -115,7 +115,8 @@
       store.set(TOKEN_KEY, params.get("k"));
       return personView(params.get("k"));
     }
-    if (hash === "organizer") return organizerView();
+    // "#organizer" is the original family; "#organizer=name" is another family with its own list and draw.
+    if (params.has("organizer")) return organizerView(params.get("organizer"));
     const saved = store.get(TOKEN_KEY);
     if (saved) return personView(saved);
     welcomeView();
@@ -458,18 +459,23 @@
   });
 
   // ---------- organizer page ----------
-  let adminCode = null, adminData = null;
+  let adminCode = null, adminData = null, adminFamily = "";
+  function cleanFamily(s) { return (s || "").toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 30); }
+  // Only send the family when there is one, so the original family's page works with the original database setup too.
+  function fam(args) { return adminFamily ? Object.assign(args, { p_family: adminFamily }) : args; }
+  function adminKey() { return adminFamily ? ADMIN_KEY + ":" + adminFamily : ADMIN_KEY; }
 
-  async function organizerView() {
+  async function organizerView(family) {
     personToken = null;
+    if (family !== undefined) adminFamily = cleanFamily(family);
     setTagline("Organizer page");
-    adminCode = store.get(ADMIN_KEY, true);
+    adminCode = store.get(adminKey(), true);
     if (adminCode) {
-      try { adminData = await rpc("regalia_admin_state", { p_code: adminCode }); return renderAdmin(); }
-      catch (e) { adminCode = null; store.del(ADMIN_KEY, true); }
+      try { adminData = await rpc("regalia_admin_state", fam({ p_code: adminCode })); return renderAdmin(); }
+      catch (e) { adminCode = null; store.del(adminKey(), true); }
     }
     let status;
-    try { status = await rpc("regalia_admin_status", {}); }
+    try { status = await rpc("regalia_admin_status", fam({})); }
     catch (e) { return showError("Can't load right now", "Check your internet connection, then refresh the page."); }
     renderEvent(null, null);
     const setup = status && status.needs_setup;
@@ -487,9 +493,9 @@
       const code = input.value;
       msg.className = "status"; msg.textContent = tr("One moment…");
       try {
-        if (setup) await rpc("regalia_admin_setup", { p_code: code });
-        adminData = await rpc("regalia_admin_state", { p_code: code });
-        adminCode = code; store.set(ADMIN_KEY, code, true);
+        if (setup) await rpc("regalia_admin_setup", fam({ p_code: code }));
+        adminData = await rpc("regalia_admin_state", fam({ p_code: code }));
+        adminCode = code; store.set(adminKey(), code, true);
         renderAdmin();
       } catch (e) {
         msg.className = "status err";
@@ -502,7 +508,7 @@
   }
 
   async function refreshAdmin() {
-    adminData = await rpc("regalia_admin_state", { p_code: adminCode });
+    adminData = await rpc("regalia_admin_state", fam({ p_code: adminCode }));
     renderAdmin();
   }
 
@@ -522,7 +528,7 @@
     addForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       if (!addInput.value.trim()) { addMsg.className = "status err"; addMsg.textContent = tr("Type a name first."); return; }
-      try { await rpc("regalia_admin_add", { p_code: adminCode, p_name: addInput.value }); await refreshAdmin(); document.getElementById("oAdd").focus(); }
+      try { await rpc("regalia_admin_add", fam({ p_code: adminCode, p_name: addInput.value })); await refreshAdmin(); document.getElementById("oAdd").focus(); }
       catch (e) { addMsg.className = "status err"; addMsg.textContent = tr("Couldn't add. Try again."); }
     });
 
@@ -540,7 +546,7 @@
         removeBtn.addEventListener("click", async () => {
           if (!sure) { sure = true; removeBtn.textContent = tr("Tap again to remove"); return; }
           removeBtn.disabled = true;
-          try { await rpc("regalia_admin_remove", { p_code: adminCode, p_id: p.id }); await refreshAdmin(); }
+          try { await rpc("regalia_admin_remove", fam({ p_code: adminCode, p_id: p.id })); await refreshAdmin(); }
           catch (e) { removeBtn.disabled = false; removeBtn.textContent = tr("Couldn't remove"); }
         });
         return h("div", { class: "personrow" },
@@ -572,7 +578,7 @@
       h("button", { type: "submit", class: "ghost", text: "Save details" }), evMsg);
     evForm.addEventListener("submit", async (ev) => {
       ev.preventDefault();
-      try { await rpc("regalia_admin_event", { p_code: adminCode, p_budget: budget.value, p_date: date.value || null }); await refreshAdmin(); }
+      try { await rpc("regalia_admin_event", fam({ p_code: adminCode, p_budget: budget.value, p_date: date.value || null })); await refreshAdmin(); }
       catch (e) { evMsg.className = "status err"; evMsg.textContent = tr("Couldn't save. Try again."); }
     });
 
@@ -592,7 +598,7 @@
         h("div", { class: "row" },
           h("button", { type: "button", text: "Yes, draw names", onclick: async () => {
             confirmBox.hidden = true; drawBtn.disabled = true; drawMsg.className = "status"; drawMsg.textContent = tr("Drawing…");
-            try { await rpc("regalia_admin_draw", { p_code: adminCode }); await refreshAdmin();
+            try { await rpc("regalia_admin_draw", fam({ p_code: adminCode })); await refreshAdmin();
               const s = app.querySelector("#drawStatus"); if (s) { s.className = "status ok pop"; s.textContent = tr("✓ Done! Everyone can now open their link and spin the wheel."); }
               FX.sound.fanfare(); FX.celebrate(); FX.buzz([60, 40, 120]); }
             catch (e) { drawBtn.disabled = false; drawMsg.className = "status err"; drawMsg.textContent = tr("The draw didn't work. Try again."); }
@@ -611,7 +617,7 @@
         h("p", { class: "note", text: "The website picks for everyone. Nobody gets themselves, and not even you can see who got who." }),
         drawBtn, confirmBox, drawMsg),
       h("p", { class: "note" }, "Want to see your own page? Tap “Open” next to your name. ",
-        h("button", { type: "button", class: "ghost small", text: "Sign out of organizer page", onclick: () => { store.del(ADMIN_KEY, true); adminCode = null; organizerView(); } }))
+        h("button", { type: "button", class: "ghost small", text: "Sign out of organizer page", onclick: () => { store.del(adminKey(), true); adminCode = null; organizerView(); } }))
     );
   }
 
