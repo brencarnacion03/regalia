@@ -451,6 +451,52 @@
               "aria-label": L("Link ", "Enlace ") + (i + 1), placeholder: "https://…", autocomplete: "off", autocapitalize: "off", spellcheck: "false" }))))),
       saveBtn, status
     );
+
+    // Keep what people type even if they leave to copy a link from another app and the page reloads.
+    const FIELDS = ["fName", "fShirt", "fPants", "fShoes", "fW1", "fW2", "fW3", "fL1", "fL2", "fL3"];
+    const draftKey = "regalia_draft:" + personToken;
+    const byId = id => form.querySelector("#" + id);
+    let draft = null;
+    try { draft = JSON.parse(store.get(draftKey) || "null"); } catch (e) {}
+    if (draft) {
+      for (const id of FIELDS) if (typeof draft[id] === "string") byId(id).value = draft[id];
+      const saved = { fName: me.name || "", fShirt: me.shirt || "", fPants: me.pants || "", fShoes: me.shoes || "",
+                      fW1: w[0] || "", fW2: w[1] || "", fW3: w[2] || "" };
+      if (Object.keys(saved).some(id => (byId(id).value || "").trim() !== saved[id])) {
+        status.className = "status"; status.textContent = tr("We kept what you typed. Press Save when you're done.");
+      }
+    }
+    form.addEventListener("input", () => {
+      const d = {};
+      for (const id of FIELDS) d[id] = byId(id).value;
+      store.set(draftKey, JSON.stringify(d));
+    });
+
+    // Links save on their own as soon as one is pasted or changed, and when you switch to another app.
+    const linkStatus = h("span", { class: "hint linkstatus", role: "status" });
+    byId("fL3").closest(".wishlist").after(linkStatus);
+    let linkSaving = null;
+    async function autoSaveLinks() {
+      const links = ["fL1", "fL2", "fL3"].map(id => cleanLink(byId(id).value)).filter(Boolean);
+      const current = (personData && personData.me && personData.me.links) || [];
+      if (JSON.stringify(links) === JSON.stringify(current)) return;
+      if (linkSaving) return linkSaving;
+      linkStatus.className = "hint linkstatus"; linkStatus.textContent = tr("Saving links…");
+      linkSaving = rpc("regalia_save_links", { p_token: personToken, p_links: links })
+        .then(() => {
+          if (personData && personData.me) personData.me.links = links;
+          linkStatus.className = "hint linkstatus ok"; linkStatus.textContent = tr("✓ Links saved");
+        })
+        .catch(() => { linkStatus.className = "hint linkstatus err"; linkStatus.textContent = tr("Links didn't save yet. They'll stay here; press Save to try again."); })
+        .finally(() => { linkSaving = null; });
+      return linkSaving;
+    }
+    for (const id of ["fL1", "fL2", "fL3"]) {
+      byId(id).addEventListener("change", autoSaveLinks);
+      byId(id).addEventListener("paste", () => setTimeout(autoSaveLinks, 50));
+    }
+    autoSaveOnLeave = autoSaveLinks;
+
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const v = id => document.getElementById(id).value.trim();
@@ -464,6 +510,7 @@
         if (links.length || (me.links || []).length) {
           try { await rpc("regalia_save_links", { p_token: personToken, p_links: links }); } catch (e) { linksSaved = false; }
         }
+        if (linksSaved) store.del(draftKey);
         const fresh = await rpc("regalia_me", { p_token: personToken });
         if (fresh) personData = fresh;
         renderPerson();
@@ -483,7 +530,9 @@
       form);
   }
 
+  let autoSaveOnLeave = null;
   document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && personToken && autoSaveOnLeave && document.contains(app.querySelector("#fL1"))) autoSaveOnLeave();
     if (document.visibilityState === "visible" && personToken && personData && !spinning && !document.activeElement.matches("input")) {
       rpc("regalia_me", { p_token: personToken }).then(d => { if (d) { personData = d; renderPerson(); } }).catch(() => {});
     }
