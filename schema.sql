@@ -43,6 +43,9 @@ insert into public.regalia_event (id) values (1) on conflict do nothing;
 alter table public.regalia_people add column if not exists family text not null default '';
 create index if not exists regalia_people_family_idx on public.regalia_people (family);
 alter table public.regalia_event add column if not exists family text not null default '';
+-- A name shown on everyone's page, e.g. 'Lorenzo''s Family'. Set it with:
+--   update public.regalia_event set name = 'Lorenzo''s Family' where family = '';
+alter table public.regalia_event add column if not exists name text not null default '';
 do $$ declare c text;
 begin
   -- Remove the old "only one event" rule so each family can have its own.
@@ -98,7 +101,7 @@ revoke execute on function public.regalia_check_admin(text, text) from public, a
 
 create or replace function public.regalia_event_json(p_family text) returns json
 language sql security definer set search_path = public as $$
-  select json_build_object('budget', budget, 'exchange_date', exchange_date, 'drawn_at', drawn_at)
+  select json_build_object('name', name, 'budget', budget, 'exchange_date', exchange_date, 'drawn_at', drawn_at)
   from regalia_event where family = p_family;
 $$;
 revoke execute on function public.regalia_event_json(text) from public, anon, authenticated;

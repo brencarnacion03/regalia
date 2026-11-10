@@ -65,6 +65,7 @@ header{position:relative;display:flex;flex-direction:column;gap:6px}
 @keyframes shimmer{to{background-position:200% 0}}
 .event{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
 .chip{font-size:.88rem;padding:5px 12px;border-radius:999px;background:var(--surface);color:var(--ink);font-weight:600;border:1px solid var(--line-strong)}
+.chip.family{background:var(--pine);border-color:transparent;color:#fff}
 .chip.berry{background:var(--berry-soft);border-color:transparent;color:var(--berry)}
 
 /* type */
