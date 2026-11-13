@@ -127,6 +127,9 @@ input::placeholder{color:#a8a59c}
 input:focus{outline:none;border-color:var(--pine);box-shadow:0 0 0 4px rgba(201,162,79,.28)}
 .wishlist{display:flex;flex-direction:column;gap:8px}
 .wishrow{display:flex;align-items:center;gap:10px}
+.linkstatus{margin-top:6px;min-height:1.2em}
+.linkstatus.ok{color:var(--pine-2);font-weight:600}
+.linkstatus.err{color:var(--berry)}
 .wishrow .n{font-family:var(--font-display);font-size:1.4rem;color:var(--berry);width:1.2em;text-align:center;flex:none}
 
 /* buttons */
