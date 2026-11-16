@@ -148,8 +148,10 @@
   // ---------- family member page ----------
   let personData = null, personToken = null, matchHidden = false, spinning = false;
   // One spin per person: remembered on the server and on this phone, and reset when the organizer draws again.
-  const spunKey = match => "regalia_spun:" + personToken + ":" + match.id;
-  const hasSpun = (me, match) => !!me.spun || store.get(spunKey(match)) === "1";
+  // The phone's memory is tied to this draw, so drawing names again always gives a new spin.
+  const spunKey = match => "regalia_spun:" + personToken + ":" + match.id + ":" + ((personData && personData.event && personData.event.drawn_at) || "");
+  // The database is the source of truth; the phone's memory is only a backup if the database can't say.
+  const hasSpun = (me, match) => typeof me.spun === "boolean" ? me.spun : store.get(spunKey(match)) === "1";
 
   async function personView(token) {
     personToken = token;
