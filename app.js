@@ -146,7 +146,10 @@
   }
 
   // ---------- family member page ----------
-  let personData = null, personToken = null, revealed = false, spinning = false;
+  let personData = null, personToken = null, matchHidden = false, spinning = false;
+  // One spin per person: remembered on the server and on this phone, and reset when the organizer draws again.
+  const spunKey = match => "regalia_spun:" + personToken + ":" + match.id;
+  const hasSpun = (me, match) => !!me.spun || store.get(spunKey(match)) === "1";
 
   async function personView(token) {
     personToken = token;
@@ -213,8 +216,13 @@
       );
       return;
     }
-    if (!revealed) return buildWheel(box, match, everyone, me);
+    if (!hasSpun(me, match)) return buildWheel(box, match, everyone, me);
     box.className = "match";
+    if (matchHidden) {
+      box.append(h("span", { class: "label", text: "Your Secret Santa is hidden" }),
+        h("button", { type: "button", class: "light", text: "Show who I'm buying for 👀", onclick: () => { matchHidden = false; renderPerson(); } }));
+      return;
+    }
     box.append(h("span", { class: "label", text: "You're buying a gift for" }), h("p", { class: "who", text: match.name }));
     box.append(h("div", { class: "sizes" },
       [["Shirt", match.shirt], ["Pants", match.pants], ["Shoes", match.shoes]].map(([k, v]) =>
@@ -229,7 +237,7 @@
       box.append(h("ul", { class: "links" }, links.map(u =>
         h("li", null, h("a", { href: u, target: "_blank", rel: "noopener noreferrer" }, "🔗 " + linkLabel(u))))));
     }
-    box.append(h("button", { type: "button", class: "light small", text: "Hide", onclick: () => { revealed = false; renderPerson(); } }));
+    box.append(h("button", { type: "button", class: "light small", text: "Hide", onclick: () => { matchHidden = true; renderPerson(); } }));
   }
 
   function buildWheel(box, match, everyone, me) {
@@ -318,7 +326,10 @@
           draw(rot, k % 2 ? -1 : target); k++;
           if (k > 7) {
             clearInterval(blink); draw(rot, target);
-            showReveal(match.name, () => { spinning = false; revealed = true; renderPerson(); });
+            store.set(spunKey(match), "1");
+            if (personData && personData.me) personData.me.spun = true;
+            rpc("regalia_mark_spun", { p_token: personToken }).catch(() => {});
+            showReveal(match.name, () => { spinning = false; matchHidden = false; renderPerson(); });
           }
         }, 120);
       });

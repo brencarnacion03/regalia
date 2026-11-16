@@ -43,6 +43,8 @@ insert into public.regalia_event (id) values (1) on conflict do nothing;
 alter table public.regalia_people add column if not exists family text not null default '';
 -- Up to 3 links to things the person would like (store pages, etc.).
 alter table public.regalia_people add column if not exists links text[] not null default '{}';
+-- When the person spun the wheel (each person gets one spin per draw).
+alter table public.regalia_people add column if not exists spun_at timestamptz;
 create index if not exists regalia_people_family_idx on public.regalia_people (family);
 alter table public.regalia_event add column if not exists family text not null default '';
 -- A name shown on everyone's page, e.g. 'Lorenzo''s Family'. Set it with:
@@ -125,7 +127,8 @@ begin
   end if;
   return json_build_object(
     'me', json_build_object('id', me.id, 'name', me.name, 'shirt', me.shirt, 'pants', me.pants,
-                            'shoes', me.shoes, 'wishes', me.wishes, 'links', me.links, 'joined', me.joined),
+                            'shoes', me.shoes, 'wishes', me.wishes, 'links', me.links, 'joined', me.joined,
+                            'spun', me.spun_at is not null),
     'match', case when m.id is null then null else
       json_build_object('id', m.id, 'name', m.name, 'shirt', m.shirt, 'pants', m.pants,
                         'shoes', m.shoes, 'wishes', m.wishes, 'links', m.links) end,
@@ -169,6 +172,14 @@ begin
   where token = p_token;
   if not found then raise exception 'not_found'; end if;
   return true;
+end $$;
+
+-- Remembers that the person spun the wheel, so they only get one spin.
+create or replace function public.regalia_mark_spun(p_token text) returns boolean
+language plpgsql security definer set search_path = public as $$
+begin
+  update regalia_people set spun_at = coalesce(spun_at, now()) where token = p_token and match_id is not null;
+  return found;
 end $$;
 
 -- ---------- organizer functions ----------
@@ -246,7 +257,7 @@ begin
   n := coalesce(array_length(ids, 1), 0);
   if n < 3 then raise exception 'need_three'; end if;
   -- Everyone in the shuffled circle gives to the next person, so nobody gets themselves.
-  update regalia_people p set match_id = ids[(s.i % n) + 1]
+  update regalia_people p set match_id = ids[(s.i % n) + 1], spun_at = null
   from (select ids[g] as pid, g as i from generate_series(1, n) g) s
   where p.id = s.pid;
   update regalia_event set drawn_at = now() where family = f;
@@ -257,6 +268,7 @@ grant execute on function
   public.regalia_me(text),
   public.regalia_save(text, text, text, text, text, text[]),
   public.regalia_save_links(text, text[]),
+  public.regalia_mark_spun(text),
   public.regalia_admin_status(text),
   public.regalia_admin_setup(text, text),
   public.regalia_admin_state(text, text),

@@ -38,6 +38,8 @@ window.REGALIA_ES = {
   "Shoes": "Zapatos",
   "Gifts they would love": "Regalos que le encantarían",
   "Links they shared": "Enlaces que compartió",
+  "Your Secret Santa is hidden": "Tu Amigo Secreto está escondido",
+  "Show who I'm buying for 👀": "Ver a quién le compro 👀",
   "They haven't added gift ideas yet. Check back later.": "Todavía no ha agregado ideas de regalo. Revisa más tarde.",
   "Hide": "Ocultar",
   "Tap the button to spin!": "¡Toca el botón para girar!",
