@@ -252,9 +252,7 @@
     const n = people.length, seg = (Math.PI * 2) / n, TAU = Math.PI * 2, TOP = -Math.PI / 2;
     const css = getComputedStyle(document.documentElement);
     const red = "#a51c30", green = css.getPropertyValue("--pine").trim(), gold = css.getPropertyValue("--gold-2").trim(), ring = css.getPropertyValue("--gold").trim();
-    // Red and green only. With an odd number of names the last slice would sit next to another red, so it's a darker red.
-    const darkRed = "#6e1020";
-    const colors = names.map((_, i) => (n % 2 === 1 && i === n - 1 && n > 1) ? darkRed : (i % 2 ? green : red));
+    const colors = names.map((_, i) => (n % 2 === 1 && i === n - 1 && n > 1) ? gold : (i % 2 ? green : red));
     const cv = h("canvas", { role: "img", "aria-label": "Prize wheel with family names" });
     const pointer = h("div", { class: "pointer" });
     const wrap = h("div", { class: "wheelwrap" }, pointer, cv);
