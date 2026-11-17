@@ -214,7 +214,7 @@ begin
     'event', regalia_event_json(f),
     'people', coalesce((select json_agg(json_build_object(
                  'id', id, 'token', token, 'name', name, 'joined', joined,
-                 'has_match', match_id is not null) order by created_at)
+                 'has_match', match_id is not null, 'has_spun', spun_at is not null) order by created_at)
                from regalia_people where family = f), '[]'::json)
   );
 end $$;
@@ -253,6 +253,10 @@ language plpgsql security definer set search_path = public as $$
 declare f text := regalia_family(p_family); ids uuid[]; n int;
 begin
   perform regalia_check_admin(p_code, f);
+  -- Once anyone has spun, the names are final.
+  if exists (select 1 from regalia_people where family = f and spun_at is not null) then
+    raise exception 'already_spun';
+  end if;
   select array_agg(id order by random()) into ids from regalia_people where family = f;
   n := coalesce(array_length(ids, 1), 0);
   if n < 3 then raise exception 'need_three'; end if;

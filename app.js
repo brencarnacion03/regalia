@@ -146,7 +146,7 @@
   }
 
   // ---------- family member page ----------
-  let personData = null, personToken = null, matchHidden = false, spinning = false;
+  let personData = null, personToken = null, matchHidden = false, spinning = false, confirmedFor = null;
   // One spin per person: remembered on the server and on this phone, and reset when the organizer draws again.
   // The phone's memory is tied to this draw, so drawing names again always gives a new spin.
   const spunKey = match => "regalia_spun:" + personToken + ":" + match.id + ":" + ((personData && personData.event && personData.event.drawn_at) || "");
@@ -218,7 +218,22 @@
       );
       return;
     }
-    if (!hasSpun(me, match)) return buildWheel(box, match, everyone, me);
+    if (!hasSpun(me, match)) {
+      if (confirmedFor === personToken) return buildWheel(box, match, everyone, me);
+      // Make sure the right person spins: each link is one person's, and they only get one spin.
+      const who = firstName(me.name);
+      const note = h("p", { class: "note", style: "margin:0", text: L("You only get one spin, and the name you get is final. Only spin if you're " + who + ".",
+                                                              "Solo tienes un giro y el nombre que te toque es el final. Solo gira si eres " + who + ".") });
+      box.className = "match";
+      box.append(h("span", { class: "label", text: "Your one spin" }),
+        h("p", { class: "who", text: L("Is this " + who + "?", "¿Eres " + who + "?") }), note,
+        h("div", { class: "row" },
+          h("button", { type: "button", class: "big", text: L("Yes, I'm " + who + " 🎡", "Sí, soy " + who + " 🎡"), onclick: () => { confirmedFor = personToken; renderPerson(); } }),
+          h("button", { type: "button", class: "light", text: "This isn't me", onclick: () => {
+            note.textContent = L("Please don't spin on this page. Ask the organizer to send you your own link.",
+                                 "Por favor no gires en esta página. Pídele al organizador que te mande tu propio enlace."); } })));
+      return;
+    }
     box.className = "match";
     if (matchHidden) {
       box.append(h("span", { class: "label", text: "Your Secret Santa is hidden" }),
@@ -647,7 +662,8 @@
           h("div", { class: "top" },
             h("span", { class: "name", style: "font-weight:700;flex:1;min-width:8em" }, p.name),
             h("span", { class: "tick " + (p.joined ? "yes" : "no"), text: p.joined ? "✓ Card filled in" : "Not yet" }),
-            drawn && !p.has_match ? h("span", { class: "tick no", text: "Not in draw" }) : null),
+            drawn && !p.has_match ? h("span", { class: "tick no", text: "Not in draw" }) : null,
+            drawn && p.has_spun ? h("span", { class: "tick yes", text: "🎡 Spun" }) : null),
           h("div", { class: "linkbox", text: link }),
           h("div", { class: "row" },
             h("button", { type: "button", class: "small", text: "Copy message", onclick: async () => {
@@ -682,6 +698,11 @@
     const notReady = people.filter(p => !p.joined).length;
     const confirmBox = h("div", { class: "confirm", hidden: true });
     const drawBtn = h("button", { type: "button", class: "big red", text: drawn ? "Draw names again" : "🎁 Draw names" });
+    // Once anyone has spun, the names are final (the database refuses another draw too).
+    const spunCount = people.filter(p => p.has_spun).length;
+    const locked = drawn && spunCount > 0;
+    const lockNote = h("p", { class: "status ok", text: L("🔒 Names are final. " + spunCount + " of " + people.length + " people have spun, so names can't be drawn again.",
+                                                      "🔒 Los nombres son finales. " + spunCount + " de " + people.length + " personas ya giraron, así que no se puede volver a sortear.") });
     drawBtn.addEventListener("click", () => {
       if (people.length < 3) { drawMsg.className = "status err"; drawMsg.textContent = tr("You need at least 3 people to draw names."); return; }
       confirmBox.replaceChildren(
@@ -695,7 +716,9 @@
             try { await rpc("regalia_admin_draw", fam({ p_code: adminCode })); await refreshAdmin();
               const s = app.querySelector("#drawStatus"); if (s) { s.className = "status ok pop"; s.textContent = tr("✓ Done! Everyone can now open their link and spin the wheel."); }
               FX.sound.fanfare(); FX.celebrate(); FX.buzz([60, 40, 120]); }
-            catch (e) { drawBtn.disabled = false; drawMsg.className = "status err"; drawMsg.textContent = tr("The draw didn't work. Try again."); }
+            catch (e) { drawBtn.disabled = false; drawMsg.className = "status err";
+              drawMsg.textContent = e.code === "already_spun" ? L("🔒 Names are final: people have already spun, so names can't be drawn again.", "🔒 Los nombres son finales: ya hay personas que giraron, así que no se puede volver a sortear.")
+                                                               : tr("The draw didn't work. Try again."); }
           } }),
           h("button", { type: "button", class: "ghost", text: "Cancel", onclick: () => { confirmBox.hidden = true; } })));
       confirmBox.hidden = false;
@@ -709,7 +732,7 @@
       h("section", null, h("h2", { text: "2. Set the details" }), evForm),
       h("section", null, h("h2", { text: "3. Draw names" }),
         h("p", { class: "note", text: "The website picks for everyone. Nobody gets themselves, and not even you can see who got who." }),
-        drawBtn, confirmBox, drawMsg),
+        locked ? lockNote : drawBtn, locked ? null : confirmBox, drawMsg),
       h("p", { class: "note" }, "Want to see your own page? Tap “Open” next to your name. ",
         h("button", { type: "button", class: "ghost small", text: "Sign out of organizer page", onclick: () => { store.del(adminKey(), true); adminCode = null; organizerView(); } }))
     );
