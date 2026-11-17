@@ -612,6 +612,10 @@
     renderEvent(event, people.length);
     if (adminFamily && !event.name) document.getElementById("eventChips").prepend(h("span", { class: "chip", text: L("Family: ", "Familia: ") + adminFamily }));
     const drawn = !!event.drawn_at;
+    // Once anyone has spun, the names are final: no redraw (the database refuses too), and no adding or
+    // removing people, since that would leave someone without a person and the draw can't be redone.
+    const spunCount = people.filter(p => p.has_spun).length;
+    const locked = drawn && spunCount > 0;
 
     // add people
     const addMsg = h("p", { class: "status", role: "status" });
@@ -658,7 +662,7 @@
             h("a", { class: "btn green small", href: "https://wa.me/?text=" + encodeURIComponent(text), target: "_blank", rel: "noopener", text: "WhatsApp" }),
             h("a", { class: "btn ghost small", href: "sms:?&body=" + encodeURIComponent(text), text: "Text message" }),
             h("a", { class: "btn ghost small", href: link, text: "Open" }),
-            removeBtn),
+            locked ? null : removeBtn),
           copyMsg);
       }));
 
@@ -683,9 +687,6 @@
     const notReady = people.filter(p => !p.joined).length;
     const confirmBox = h("div", { class: "confirm", hidden: true });
     const drawBtn = h("button", { type: "button", class: "big red", text: drawn ? "Draw names again" : "🎁 Draw names" });
-    // Once anyone has spun, the names are final (the database refuses another draw too).
-    const spunCount = people.filter(p => p.has_spun).length;
-    const locked = drawn && spunCount > 0;
     const lockNote = h("p", { class: "status ok", text: L("🔒 Names are final. " + spunCount + " of " + people.length + " people have spun, so names can't be drawn again.",
                                                       "🔒 Los nombres son finales. " + spunCount + " de " + people.length + " personas ya giraron, así que no se puede volver a sortear.") });
     drawBtn.addEventListener("click", () => {
@@ -713,7 +714,7 @@
     app.replaceChildren(
       h("section", null, h("h2", { text: "1. Add your family" }),
         h("p", { class: "note", text: "Each person gets their own link. Send it to them, and they tap it. No sign up needed." }),
-        addForm, list),
+        locked ? h("p", { class: "note", text: L("🔒 Names are final, so people can't be added or removed now.", "🔒 Los nombres son finales, así que ya no se puede agregar ni quitar personas.") }) : addForm, list),
       h("section", null, h("h2", { text: "2. Set the details" }), evForm),
       h("section", null, h("h2", { text: "3. Draw names" }),
         h("p", { class: "note", text: "The website picks for everyone. Nobody gets themselves, and not even you can see who got who." }),
