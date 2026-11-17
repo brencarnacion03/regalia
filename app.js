@@ -146,7 +146,7 @@
   }
 
   // ---------- family member page ----------
-  let personData = null, personToken = null, matchHidden = false, spinning = false, confirmedFor = null;
+  let personData = null, personToken = null, matchHidden = false, spinning = false;
   // One spin per person: remembered on the server and on this phone, and reset when the organizer draws again.
   // The phone's memory is tied to this draw, so drawing names again always gives a new spin.
   const spunKey = match => "regalia_spun:" + personToken + ":" + match.id + ":" + ((personData && personData.event && personData.event.drawn_at) || "");
@@ -218,22 +218,7 @@
       );
       return;
     }
-    if (!hasSpun(me, match)) {
-      if (confirmedFor === personToken) return buildWheel(box, match, everyone, me);
-      // Make sure the right person spins: each link is one person's, and they only get one spin.
-      const who = firstName(me.name);
-      const note = h("p", { class: "note", style: "margin:0", text: L("You only get one spin, and the name you get is final. Only spin if you're " + who + ".",
-                                                              "Solo tienes un giro y el nombre que te toque es el final. Solo gira si eres " + who + ".") });
-      box.className = "match";
-      box.append(h("span", { class: "label", text: "Your one spin" }),
-        h("p", { class: "who", text: L("Is this " + who + "?", "¿Eres " + who + "?") }), note,
-        h("div", { class: "row" },
-          h("button", { type: "button", class: "big", text: L("Yes, I'm " + who + " 🎡", "Sí, soy " + who + " 🎡"), onclick: () => { confirmedFor = personToken; renderPerson(); } }),
-          h("button", { type: "button", class: "light", text: "This isn't me", onclick: () => {
-            note.textContent = L("Please don't spin on this page. Ask the organizer to send you your own link.",
-                                 "Por favor no gires en esta página. Pídele al organizador que te mande tu propio enlace."); } })));
-      return;
-    }
+    if (!hasSpun(me, match)) return buildWheel(box, match, everyone, me);
     box.className = "match";
     if (matchHidden) {
       box.append(h("span", { class: "label", text: "Your Secret Santa is hidden" }),
