@@ -65,7 +65,6 @@ window.REGALIA_ES = {
   "Turn sound off": "Quitar el sonido",
   "Turn sound on": "Poner el sonido",
   "Prize wheel with family names": "Ruleta con los nombres de la familia",
-  "🎡 Spin the wheel": "🎡 Girar la ruleta",
   "Spinning…": "Girando…",
 
   // family list
