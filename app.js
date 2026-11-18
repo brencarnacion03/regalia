@@ -244,7 +244,7 @@
 
   function buildWheel(box, match, everyone, me) {
     box.className = "match spin";
-    box.append(h("span", { class: "label", text: "Drag the wheel or tap the button!" }));
+    box.append(h("span", { class: "label", text: "Tap the button to spin!" }));
     const people = everyone.filter(p => p.id !== me.id);
     if (!people.some(p => p.id === match.id)) people.push({ id: match.id, name: match.name });
     const names = people.map(p => p.name || "Someone");
@@ -356,31 +356,7 @@
       animate(rot, rot - 0.35, 280, p => p * (2 - p), () => { b.disabled = false; spin(1, 0.012); });
     });
 
-    // drag / flick the wheel with a finger or the mouse
-    cv.style.touchAction = "none";
-    let dragging = false, lastAng = 0, lastT = 0, vel = 0;
-    const angleAt = e => { const r = cv.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
-    cv.addEventListener("pointerdown", e => {
-      if (spinning) return;
-      dragging = true; try { cv.setPointerCapture(e.pointerId); } catch (x) {}
-      lastAng = angleAt(e); lastT = performance.now(); vel = 0; wrap.classList.add("grab");
-    });
-    cv.addEventListener("pointermove", e => {
-      if (!dragging) return;
-      const a = angleAt(e); let d = a - lastAng;
-      if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
-      const t = performance.now();
-      vel = 0.6 * vel + 0.4 * (d / Math.max(8, t - lastT));
-      lastAng = a; lastT = t; setRot(rot + d);
-    });
-    const release = () => {
-      if (!dragging) return;
-      dragging = false; wrap.classList.remove("grab");
-      if (performance.now() - lastT > 120) vel = 0;
-      if (Math.abs(vel) > 0.003) spin(Math.sign(vel), Math.abs(vel));
-    };
-    cv.addEventListener("pointerup", release);
-    cv.addEventListener("pointercancel", release);
+    // The wheel only spins from the button, so scrolling the page over it never starts a spin.
   }
 
   function showReveal(name, done) {
@@ -468,7 +444,7 @@
               placeholder: ["A cozy robe", "Coffee", "A good book"][i], autocomplete: "off" }))))),
       h("div", { class: "field" },
         h("span", { class: "flabel" }, "Links to things I'd like ", h("span", { class: "hint", style: "display:inline;font-weight:400", text: "(optional, up to 3)" })),
-        h("span", { class: "hint", text: "Copy the link from Amazon, Target or any store and paste it here." }),
+        h("span", { class: "hint", text: "Copy the link from any store and paste it here." }),
         h("div", { class: "wishlist" }, [0, 1, 2].map(i =>
           h("div", { class: "wishrow" }, h("span", { class: "n", text: "🔗" }),
             h("input", { id: "fL" + (i + 1), type: "url", inputmode: "url", maxlength: "500", value: l[i] || "",
