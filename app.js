@@ -255,13 +255,23 @@
     const colors = names.map((_, i) => (n % 2 === 1 && i === n - 1 && n > 1) ? gold : (i % 2 ? green : red));
     const cv = h("canvas", { role: "img", "aria-label": "Prize wheel with family names" });
     const pointer = h("div", { class: "pointer" });
-    const wrap = h("div", { class: "wheelwrap" }, pointer, cv);
+    // The canvas sits in a round "disc" so it can be turned smoothly without spilling outside the circle.
+    const wrap = h("div", { class: "wheelwrap" }, pointer, h("div", { class: "wheeldisc" }, cv), h("div", { class: "wheelhub", "aria-hidden": "true" }, "🎁"));
     box.append(wrap);
     const size = 320, dpr = window.devicePixelRatio || 1;
     cv.width = size * dpr; cv.height = size * dpr;
     const ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
     const R = size / 2 - 10, C = size / 2;
-    function draw(rot, hi) {
+    // The wheel is painted once (and again only when the winning slice flashes); spinning just turns the
+    // canvas, which phones do on the graphics chip, so it stays smooth even on older phones.
+    let painted = {};
+    function draw(r, hi) {
+      if (painted.hi !== hi || painted.font !== fontReady) { paint(0, hi); painted = { hi, font: fontReady }; }
+      cv.style.transform = "rotate(" + r + "rad)";
+    }
+    let fontReady = false;
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fontReady = true; draw(rot); });
+    function paint(rot, hi) {
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath(); ctx.arc(C, C, R + 6, 0, TAU); ctx.fillStyle = "#0b2c21"; ctx.fill();
       // little lights around the rim
@@ -283,13 +293,14 @@
         const label = names[i].length > 14 ? names[i].slice(0, 13) + "…" : names[i];
         ctx.fillText(label, R - 16, 0); ctx.restore();
       }
-      ctx.beginPath(); ctx.arc(C, C, 28, 0, TAU); ctx.fillStyle = "#fff"; ctx.fill();
-      ctx.lineWidth = 4; ctx.strokeStyle = ring; ctx.stroke();
-      ctx.font = "24px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎁", C, C + 1);
     }
     function segAt(r) { let a = (TOP - r) % TAU; if (a < 0) a += TAU; return Math.floor(a / seg) % n; }
     let rot = TOP - seg / 2, lastSeg = segAt(rot);
-    function flick() { pointer.classList.remove("flick"); void pointer.offsetWidth; pointer.classList.add("flick"); }
+    let lastFlick = 0;
+    function flick() {
+      const t = performance.now(); if (t - lastFlick < 70) return; lastFlick = t;   // at most ~14 a second, so it doesn't slow the spin
+      pointer.classList.remove("flick"); void pointer.offsetWidth; pointer.classList.add("flick");
+    }
     function setRot(r, hi) {
       rot = r; draw(rot, hi);
       const s = segAt(rot);
