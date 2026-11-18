@@ -244,7 +244,7 @@
 
   function buildWheel(box, match, everyone, me) {
     box.className = "match spin";
-    box.append(h("span", { class: "label", text: "Drag the wheel or tap the button!" }));
+    box.append(h("span", { class: "label", text: "Tap the button to spin!" }));
     const people = everyone.filter(p => p.id !== me.id);
     if (!people.some(p => p.id === match.id)) people.push({ id: match.id, name: match.name });
     const names = people.map(p => p.name || "Someone");
@@ -255,13 +255,23 @@
     const colors = names.map((_, i) => (n % 2 === 1 && i === n - 1 && n > 1) ? gold : (i % 2 ? green : red));
     const cv = h("canvas", { role: "img", "aria-label": "Prize wheel with family names" });
     const pointer = h("div", { class: "pointer" });
-    const wrap = h("div", { class: "wheelwrap" }, pointer, cv);
+    // The canvas sits in a round "disc" so it can be turned smoothly without spilling outside the circle.
+    const wrap = h("div", { class: "wheelwrap" }, pointer, h("div", { class: "wheeldisc" }, cv), h("div", { class: "wheelhub", "aria-hidden": "true" }, "🎁"));
     box.append(wrap);
     const size = 320, dpr = window.devicePixelRatio || 1;
     cv.width = size * dpr; cv.height = size * dpr;
     const ctx = cv.getContext("2d"); ctx.scale(dpr, dpr);
     const R = size / 2 - 10, C = size / 2;
-    function draw(rot, hi) {
+    // The wheel is painted once (and again only when the winning slice flashes); spinning just turns the
+    // canvas, which phones do on the graphics chip, so it stays smooth even on older phones.
+    let painted = {};
+    function draw(r, hi) {
+      if (painted.hi !== hi || painted.font !== fontReady) { paint(0, hi); painted = { hi, font: fontReady }; }
+      cv.style.transform = "rotate(" + r + "rad)";
+    }
+    let fontReady = false;
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { fontReady = true; draw(rot); });
+    function paint(rot, hi) {
       ctx.clearRect(0, 0, size, size);
       ctx.beginPath(); ctx.arc(C, C, R + 6, 0, TAU); ctx.fillStyle = "#0b2c21"; ctx.fill();
       // little lights around the rim
@@ -283,13 +293,14 @@
         const label = names[i].length > 14 ? names[i].slice(0, 13) + "…" : names[i];
         ctx.fillText(label, R - 16, 0); ctx.restore();
       }
-      ctx.beginPath(); ctx.arc(C, C, 28, 0, TAU); ctx.fillStyle = "#fff"; ctx.fill();
-      ctx.lineWidth = 4; ctx.strokeStyle = ring; ctx.stroke();
-      ctx.font = "24px system-ui, sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("🎁", C, C + 1);
     }
     function segAt(r) { let a = (TOP - r) % TAU; if (a < 0) a += TAU; return Math.floor(a / seg) % n; }
     let rot = TOP - seg / 2, lastSeg = segAt(rot);
-    function flick() { pointer.classList.remove("flick"); void pointer.offsetWidth; pointer.classList.add("flick"); }
+    let lastFlick = 0;
+    function flick() {
+      const t = performance.now(); if (t - lastFlick < 70) return; lastFlick = t;   // at most ~14 a second, so it doesn't slow the spin
+      pointer.classList.remove("flick"); void pointer.offsetWidth; pointer.classList.add("flick");
+    }
     function setRot(r, hi) {
       rot = r; draw(rot, hi);
       const s = segAt(rot);
@@ -297,7 +308,7 @@
     }
     draw(rot);
 
-    const b = h("button", { type: "button", class: "big spinbtn", text: "🎡 Spin the wheel" });
+    const b = h("button", { type: "button", class: "big spinbtn", text: "Spin the wheel" });
     box.append(b);
 
     function animate(from, to, dur, ease, done) {
@@ -345,31 +356,7 @@
       animate(rot, rot - 0.35, 280, p => p * (2 - p), () => { b.disabled = false; spin(1, 0.012); });
     });
 
-    // drag / flick the wheel with a finger or the mouse
-    cv.style.touchAction = "none";
-    let dragging = false, lastAng = 0, lastT = 0, vel = 0;
-    const angleAt = e => { const r = cv.getBoundingClientRect(); return Math.atan2(e.clientY - (r.top + r.height / 2), e.clientX - (r.left + r.width / 2)); };
-    cv.addEventListener("pointerdown", e => {
-      if (spinning) return;
-      dragging = true; try { cv.setPointerCapture(e.pointerId); } catch (x) {}
-      lastAng = angleAt(e); lastT = performance.now(); vel = 0; wrap.classList.add("grab");
-    });
-    cv.addEventListener("pointermove", e => {
-      if (!dragging) return;
-      const a = angleAt(e); let d = a - lastAng;
-      if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
-      const t = performance.now();
-      vel = 0.6 * vel + 0.4 * (d / Math.max(8, t - lastT));
-      lastAng = a; lastT = t; setRot(rot + d);
-    });
-    const release = () => {
-      if (!dragging) return;
-      dragging = false; wrap.classList.remove("grab");
-      if (performance.now() - lastT > 120) vel = 0;
-      if (Math.abs(vel) > 0.003) spin(Math.sign(vel), Math.abs(vel));
-    };
-    cv.addEventListener("pointerup", release);
-    cv.addEventListener("pointercancel", release);
+    // The wheel only spins from the button, so scrolling the page over it never starts a spin.
   }
 
   function showReveal(name, done) {
@@ -457,7 +444,7 @@
               placeholder: ["A cozy robe", "Coffee", "A good book"][i], autocomplete: "off" }))))),
       h("div", { class: "field" },
         h("span", { class: "flabel" }, "Links to things I'd like ", h("span", { class: "hint", style: "display:inline;font-weight:400", text: "(optional, up to 3)" })),
-        h("span", { class: "hint", text: "Copy the link from Amazon, Target or any store and paste it here." }),
+        h("span", { class: "hint", text: "Copy the link from any store and paste it here." }),
         h("div", { class: "wishlist" }, [0, 1, 2].map(i =>
           h("div", { class: "wishrow" }, h("span", { class: "n", text: "🔗" }),
             h("input", { id: "fL" + (i + 1), type: "url", inputmode: "url", maxlength: "500", value: l[i] || "",
@@ -612,6 +599,10 @@
     renderEvent(event, people.length);
     if (adminFamily && !event.name) document.getElementById("eventChips").prepend(h("span", { class: "chip", text: L("Family: ", "Familia: ") + adminFamily }));
     const drawn = !!event.drawn_at;
+    // Once anyone has spun, the names are final: no redraw (the database refuses too), and no adding or
+    // removing people, since that would leave someone without a person and the draw can't be redone.
+    const spunCount = people.filter(p => p.has_spun).length;
+    const locked = drawn && spunCount > 0;
 
     // add people
     const addMsg = h("p", { class: "status", role: "status" });
@@ -647,7 +638,8 @@
           h("div", { class: "top" },
             h("span", { class: "name", style: "font-weight:700;flex:1;min-width:8em" }, p.name),
             h("span", { class: "tick " + (p.joined ? "yes" : "no"), text: p.joined ? "✓ Card filled in" : "Not yet" }),
-            drawn && !p.has_match ? h("span", { class: "tick no", text: "Not in draw" }) : null),
+            drawn && !p.has_match ? h("span", { class: "tick no", text: "Not in draw" }) : null,
+            drawn && p.has_spun ? h("span", { class: "tick yes", text: "🎡 Spun" }) : null),
           h("div", { class: "linkbox", text: link }),
           h("div", { class: "row" },
             h("button", { type: "button", class: "small", text: "Copy message", onclick: async () => {
@@ -657,7 +649,7 @@
             h("a", { class: "btn green small", href: "https://wa.me/?text=" + encodeURIComponent(text), target: "_blank", rel: "noopener", text: "WhatsApp" }),
             h("a", { class: "btn ghost small", href: "sms:?&body=" + encodeURIComponent(text), text: "Text message" }),
             h("a", { class: "btn ghost small", href: link, text: "Open" }),
-            removeBtn),
+            locked ? null : removeBtn),
           copyMsg);
       }));
 
@@ -682,6 +674,8 @@
     const notReady = people.filter(p => !p.joined).length;
     const confirmBox = h("div", { class: "confirm", hidden: true });
     const drawBtn = h("button", { type: "button", class: "big red", text: drawn ? "Draw names again" : "🎁 Draw names" });
+    const lockNote = h("p", { class: "status ok", text: L("🔒 Names are final. " + spunCount + " of " + people.length + " people have spun, so names can't be drawn again.",
+                                                      "🔒 Los nombres son finales. " + spunCount + " de " + people.length + " personas ya giraron, así que no se puede volver a sortear.") });
     drawBtn.addEventListener("click", () => {
       if (people.length < 3) { drawMsg.className = "status err"; drawMsg.textContent = tr("You need at least 3 people to draw names."); return; }
       confirmBox.replaceChildren(
@@ -695,7 +689,9 @@
             try { await rpc("regalia_admin_draw", fam({ p_code: adminCode })); await refreshAdmin();
               const s = app.querySelector("#drawStatus"); if (s) { s.className = "status ok pop"; s.textContent = tr("✓ Done! Everyone can now open their link and spin the wheel."); }
               FX.sound.fanfare(); FX.celebrate(); FX.buzz([60, 40, 120]); }
-            catch (e) { drawBtn.disabled = false; drawMsg.className = "status err"; drawMsg.textContent = tr("The draw didn't work. Try again."); }
+            catch (e) { drawBtn.disabled = false; drawMsg.className = "status err";
+              drawMsg.textContent = e.code === "already_spun" ? L("🔒 Names are final: people have already spun, so names can't be drawn again.", "🔒 Los nombres son finales: ya hay personas que giraron, así que no se puede volver a sortear.")
+                                                               : tr("The draw didn't work. Try again."); }
           } }),
           h("button", { type: "button", class: "ghost", text: "Cancel", onclick: () => { confirmBox.hidden = true; } })));
       confirmBox.hidden = false;
@@ -705,11 +701,11 @@
     app.replaceChildren(
       h("section", null, h("h2", { text: "1. Add your family" }),
         h("p", { class: "note", text: "Each person gets their own link. Send it to them, and they tap it. No sign up needed." }),
-        addForm, list),
+        locked ? h("p", { class: "note", text: L("🔒 Names are final, so people can't be added or removed now.", "🔒 Los nombres son finales, así que ya no se puede agregar ni quitar personas.") }) : addForm, list),
       h("section", null, h("h2", { text: "2. Set the details" }), evForm),
       h("section", null, h("h2", { text: "3. Draw names" }),
         h("p", { class: "note", text: "The website picks for everyone. Nobody gets themselves, and not even you can see who got who." }),
-        drawBtn, confirmBox, drawMsg),
+        locked ? lockNote : drawBtn, locked ? null : confirmBox, drawMsg),
       h("p", { class: "note" }, "Want to see your own page? Tap “Open” next to your name. ",
         h("button", { type: "button", class: "ghost small", text: "Sign out of organizer page", onclick: () => { store.del(adminKey(), true); adminCode = null; organizerView(); } }))
     );
